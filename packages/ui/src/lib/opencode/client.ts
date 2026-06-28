@@ -605,6 +605,52 @@ class OpencodeService {
     return textBasedTypes.includes(lowerMime);
   }
 
+  private guessMimeFromFilename(filename: string): string | undefined {
+    if (!filename) return undefined;
+    const ext = filename.split('.').pop()?.toLowerCase();
+    if (!ext) return undefined;
+    const map: Record<string, string> = {
+      txt: 'text/plain', md: 'text/markdown', json: 'application/json',
+      xml: 'application/xml', yaml: 'application/x-yaml', yml: 'application/x-yaml',
+      toml: 'application/toml', js: 'application/javascript', ts: 'application/typescript',
+      jsx: 'text/jsx', tsx: 'text/typescript-jsx', css: 'text/css', html: 'text/html',
+      htm: 'text/html', svg: 'image/svg+xml', sh: 'application/x-sh',
+      bash: 'application/x-sh', zsh: 'application/x-sh', py: 'text/x-python',
+      rb: 'text/x-ruby', rs: 'text/x-rust', go: 'text/x-go', java: 'text/x-java',
+      c: 'text/x-c', cpp: 'text/x-c++', h: 'text/x-c', hpp: 'text/x-c++',
+      sql: 'text/x-sql', r: 'text/x-r', vue: 'text/x-vue', svelte: 'text/x-svelte',
+      swift: 'text/x-swift', kt: 'text/x-kotlin', kts: 'text/x-kotlin',
+      dart: 'text/x-dart', lua: 'text/x-lua', php: 'text/x-php',
+      pl: 'text/x-perl', pm: 'text/x-perl', ex: 'text/x-elixir', exs: 'text/x-elixir',
+      tf: 'text/x-terraform', hcl: 'text/x-hcl', dockerfile: 'text/x-dockerfile',
+      gradle: 'text/x-gradle', cfg: 'text/x-config', conf: 'text/x-config',
+      ini: 'text/x-config', env: 'text/x-config', gitignore: 'text/x-config',
+      editorconfig: 'text/x-config', nix: 'text/x-nix',
+      m: 'text/x-matlab', matlab: 'text/x-matlab',
+      rmd: 'text/x-rmarkdown', rnw: 'text/x-sweave',
+      do: 'text/x-stata', ado: 'text/x-stata',
+      jl: 'text/x-julia',
+      scala: 'text/x-scala', sc: 'text/x-scala',
+      groovy: 'text/x-groovy', gvy: 'text/x-groovy', gdsl: 'text/x-groovy',
+      kt: 'text/x-kotlin', kts: 'text/x-kotlin', ktm: 'text/x-kotlin',
+      cr: 'text/x-crystal',
+      erl: 'text/x-erlang', hrl: 'text/x-erlang',
+      clj: 'text/x-clojure', cljs: 'text/x-clojure', cljc: 'text/x-clojure',
+      hs: 'text/x-haskell', lhs: 'text/x-haskell',
+      ml: 'text/x-ocaml', mli: 'text/x-ocaml',
+      zig: 'text/x-zig',
+      tex: 'text/x-tex', sty: 'text/x-tex', cls: 'text/x-tex',
+      bib: 'text/x-bibtex',
+      ps1: 'text/x-powershell', psm1: 'text/x-powershell', psd1: 'text/x-powershell',
+      bat: 'text/x-bat', cmd: 'text/x-bat',
+      makefile: 'text/x-makefile', mk: 'text/x-makefile',
+      cmake: 'text/x-cmake', cmakelists: 'text/x-cmake',
+      patch: 'text/x-diff', diff: 'text/x-diff',
+      proto: 'text/x-protobuf',
+    };
+    return map[ext];
+  }
+
   /**
    * Check if MIME type is HEIC/HEIF (iPhone photo format).
    */
@@ -678,9 +724,21 @@ class OpencodeService {
       return this.convertHeicToJpeg(file);
     }
 
+    // Resolve empty/unknown MIME from filename extension before normalization
+    let mime = file.mime;
+    if (!mime || mime === 'application/octet-stream') {
+      const guessed = this.guessMimeFromFilename(file.filename);
+      if (guessed) {
+        mime = guessed;
+      } else {
+        // Fall back to application/octet-stream which is handled below
+        mime = 'application/octet-stream';
+      }
+    }
+
     // Handle text MIME normalization
-    if (!this.shouldNormalizeToTextPlain(file.mime)) {
-      return file;
+    if (!this.shouldNormalizeToTextPlain(mime)) {
+      return { ...file, mime };
     }
 
     let normalizedUrl = file.url;
